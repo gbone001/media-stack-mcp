@@ -21,3 +21,22 @@ export function requireClient<T>(client: T | undefined, name: string): T {
   if (!client) throw new Error(`${name} is not configured. Check .env values.`);
   return client;
 }
+
+/**
+ * Reports which media apps are configured, and for those that are, the base URL
+ * they will be reached at. Never includes API keys or passwords, so it is safe
+ * to write to logs.
+ */
+export function configuredApps() {
+  return [
+    { name: 'radarr', configured: Boolean(env.RADARR_URL && env.RADARR_API_KEY), url: env.RADARR_URL },
+    { name: 'sonarr', configured: Boolean(env.SONARR_URL && env.SONARR_API_KEY), url: env.SONARR_URL },
+    { name: 'prowlarr', configured: Boolean(env.PROWLARR_URL && env.PROWLARR_API_KEY), url: env.PROWLARR_URL },
+    { name: 'sabnzbd', configured: Boolean(env.SABNZBD_URL && env.SABNZBD_API_KEY), url: env.SABNZBD_URL },
+    {
+      name: 'qbittorrent',
+      configured: Boolean(env.QBITTORRENT_URL && env.QBITTORRENT_USERNAME && env.QBITTORRENT_PASSWORD),
+      url: env.QBITTORRENT_URL
+    }
+  ];
+}

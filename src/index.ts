@@ -5,6 +5,25 @@ import express, { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { env, mcpAllowedHosts } from './config/env.js';
 import { createMediaStackServer } from './server.js';
+import { configuredApps } from './tools/context.js';
+
+function logConfiguredApps() {
+  const apps = configuredApps();
+  const enabled = apps.filter(app => app.configured);
+  const missing = apps.filter(app => !app.configured).map(app => app.name);
+
+  if (enabled.length === 0) {
+    console.error(
+      'No media apps are configured. Check that RADARR_URL/RADARR_API_KEY (etc.) are present in the container environment.'
+    );
+  } else {
+    console.error(`Configured media apps: ${enabled.map(app => `${app.name} (${app.url})`).join(', ')}`);
+  }
+
+  if (missing.length > 0) {
+    console.error(`Not configured (missing URL and/or key): ${missing.join(', ')}`);
+  }
+}
 
 async function startStdio() {
   const server = createMediaStackServer();
@@ -102,6 +121,8 @@ async function startHttp() {
     void shutdown().finally(() => process.exit(0));
   });
 }
+
+logConfiguredApps();
 
 if (env.MCP_TRANSPORT === 'http') {
   await startHttp();
