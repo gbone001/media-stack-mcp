@@ -1,0 +1,17 @@
+services:
+  media-stack-mcp:
+    build: .
+    container_name: media-stack-mcp
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MCP_TRANSPORT: http
+    ports:
+      - "3000:3000"
+    networks:
+      - media-stack
+
+networks:
+  media-stack:
+    external: true
