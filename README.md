@@ -63,11 +63,11 @@ MCP_HTTP_TOKEN=use_a_long_random_secret_here
 If you want to run the container locally, use LAN IP URLs for Radarr, Sonarr, Prowlarr, SABnzbd, and qBittorrent unless those services are also running on the same local Docker network:
 
 ```env
-RADARR_URL=http://192.168.1.151:7878
-SONARR_URL=http://192.168.1.151:8989
-PROWLARR_URL=http://192.168.1.151:9696
-SABNZBD_URL=http://192.168.1.151:8080
-QBITTORRENT_URL=http://192.168.1.151:5080
+RADARR_URL=http://<qnap-ip>:7878
+SONARR_URL=http://<qnap-ip>:8989
+PROWLARR_URL=http://<qnap-ip>:9696
+SABNZBD_URL=http://<qnap-ip>:8080
+QBITTORRENT_URL=http://<qnap-ip>:5080
 ```
 
 Build the Docker image locally:
@@ -333,11 +333,11 @@ QBITTORRENT_URL=http://vpn:5080
 If it does not share a Docker network, use your QNAP or LAN IP instead:
 
 ```env
-RADARR_URL=http://192.168.1.151:7878
-SONARR_URL=http://192.168.1.151:8989
-PROWLARR_URL=http://192.168.1.151:9696
-SABNZBD_URL=http://192.168.1.151:8080
-QBITTORRENT_URL=http://192.168.1.151:5080
+RADARR_URL=http://<qnap-ip>:7878
+SONARR_URL=http://<qnap-ip>:8989
+PROWLARR_URL=http://<qnap-ip>:9696
+SABNZBD_URL=http://<qnap-ip>:8080
+QBITTORRENT_URL=http://<qnap-ip>:5080
 ```
 
 If qBittorrent runs behind Gluetun and the WebUI is exposed by the VPN/Gluetun container, use the container that exposes the WebUI. Commonly:
@@ -611,10 +611,10 @@ SABNZBD_URL=http://sabnzbd:8080
 Common LAN URLs:
 
 ```env
-RADARR_URL=http://192.168.1.151:7878
-SONARR_URL=http://192.168.1.151:8989
-PROWLARR_URL=http://192.168.1.151:9696
-SABNZBD_URL=http://192.168.1.151:8080
+RADARR_URL=http://<qnap-ip>:7878
+SONARR_URL=http://<qnap-ip>:8989
+PROWLARR_URL=http://<qnap-ip>:9696
+SABNZBD_URL=http://<qnap-ip>:8080
 ```
 
 Also confirm the API key is copied from the matching app, not another service.
@@ -692,15 +692,15 @@ Example local stdio MCP config:
       "args": ["/path/to/media-stack-mcp/dist/index.js"],
       "env": {
         "MCP_TRANSPORT": "stdio",
-        "RADARR_URL": "http://192.168.1.151:7878",
+        "RADARR_URL": "http://<qnap-ip>:7878",
         "RADARR_API_KEY": "your_key",
-        "SONARR_URL": "http://192.168.1.151:8989",
+        "SONARR_URL": "http://<qnap-ip>:8989",
         "SONARR_API_KEY": "your_key",
-        "SABNZBD_URL": "http://192.168.1.151:8080",
+        "SABNZBD_URL": "http://<qnap-ip>:8080",
         "SABNZBD_API_KEY": "your_key",
-        "PROWLARR_URL": "http://192.168.1.151:9696",
+        "PROWLARR_URL": "http://<qnap-ip>:9696",
         "PROWLARR_API_KEY": "your_key",
-        "QBITTORRENT_URL": "http://192.168.1.151:5080",
+        "QBITTORRENT_URL": "http://<qnap-ip>:5080",
         "QBITTORRENT_USERNAME": "admin",
         "QBITTORRENT_PASSWORD": "your_password"
       }
