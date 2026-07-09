@@ -16,6 +16,12 @@ The primary deployment target is **QNAP Docker**. In Docker mode this runs as a 
 http://<qnap-ip>:3000/mcp
 ```
 
+For Claude remote MCP/custom connector usage, publish the same MCP server through Cloudflare Tunnel:
+
+```text
+https://mcp.yourdomain.com/mcp
+```
+
 Clients must send:
 
 ```http
@@ -100,6 +106,12 @@ docker compose up -d --build
 
 The included `docker-compose.yml` is the preferred QNAP runtime path because it publishes port `3000`, loads `.env`, and attaches the container to the expected `media-stack` Docker network.
 
+For Claude, also configure Cloudflare Tunnel so the public HTTPS URL routes to the internal Docker service:
+
+```text
+https://mcp.yourdomain.com -> http://media-stack-mcp:3000
+```
+
 ## QNAP Docker Quick Start
 
 SSH into your QNAP and choose an install location:
@@ -136,6 +148,88 @@ Watch startup logs:
 docker compose logs -f media-stack-mcp
 ```
 
+## Claude HTTPS Setup
+
+Claude remote MCP/custom connectors need a trusted HTTPS URL. This project uses a `cloudflared` sidecar in Docker Compose so the MCP app can stay plain HTTP inside Docker while Cloudflare publishes HTTPS externally.
+
+The important lesson from Claude setup is that Claude does not connect to the QNAP LAN URL directly. Use the Cloudflare HTTPS hostname in Claude, not `http://<qnap-ip>:3000/mcp`, not `localhost`, and not a self-signed HTTPS URL.
+
+Claude needs:
+
+- a publicly reachable `https://` URL with a trusted certificate
+- the full MCP path, for example `https://mcp.yourdomain.com/mcp`
+- the bearer token header: `Authorization: Bearer <MCP_HTTP_TOKEN>`
+- no extra browser-only login page in front of `/mcp`
+
+In the Cloudflare Zero Trust dashboard:
+
+1. Create a Cloudflare Tunnel.
+2. Choose Docker as the connector environment.
+3. Add a public hostname, for example `mcp.yourdomain.com`.
+4. Set the tunnel service target to:
+
+```text
+http://media-stack-mcp:3000
+```
+
+Copy the tunnel token into `.env`:
+
+```env
+CLOUDFLARED_TOKEN=your_cloudflare_tunnel_token
+```
+
+Set the public MCP URL and allowed Host header:
+
+```env
+MCP_PUBLIC_URL=https://mcp.yourdomain.com/mcp
+MCP_ALLOWED_HOSTS=mcp.yourdomain.com
+```
+
+Start or update the stack:
+
+```bash
+docker compose up -d --build
+```
+
+Check the Cloudflare Tunnel logs:
+
+```bash
+docker compose logs -f cloudflared
+```
+
+Use this URL in Claude:
+
+```text
+https://mcp.yourdomain.com/mcp
+```
+
+Use this header:
+
+```http
+Authorization: Bearer <MCP_HTTP_TOKEN>
+```
+
+Do not put Cloudflare Access in front of `/mcp` unless your Claude client can send the required Cloudflare Access headers. Keep `MCP_HTTP_TOKEN` as the MCP protection layer.
+
+Claude connector values should look like this:
+
+```text
+Name: media-stack
+URL: https://mcp.yourdomain.com/mcp
+Authorization header: Bearer your_long_random_mcp_token
+```
+
+If Claude asks for separate auth fields, use:
+
+```text
+Header name: Authorization
+Header value: Bearer your_long_random_mcp_token
+```
+
+The token must be the value from `MCP_HTTP_TOKEN`, not the Cloudflare tunnel token.
+
+Do not paste `CLOUDFLARED_TOKEN` into Claude. That token is only for the `cloudflared` Docker sidecar.
+
 ## Required `.env` Values
 
 These MCP settings should be present for QNAP Docker mode:
@@ -147,6 +241,9 @@ MCP_HTTP_HOST=0.0.0.0
 MCP_HTTP_PORT=3000
 MCP_HTTP_PATH=/mcp
 MCP_HTTP_TOKEN=use_a_long_random_secret_here
+MCP_PUBLIC_URL=https://mcp.yourdomain.com/mcp
+MCP_ALLOWED_HOSTS=mcp.yourdomain.com
+CLOUDFLARED_TOKEN=your_cloudflare_tunnel_token
 ```
 
 Configure whichever media apps you want enabled. A tool returns a clear configuration error if its matching app URL/key is missing.
@@ -273,10 +370,36 @@ Expected response:
 {"ok":true,"name":"media-stack-mcp","transport":"http"}
 ```
 
+Check the Cloudflare HTTPS health endpoint:
+
+```bash
+curl https://mcp.yourdomain.com/healthz
+```
+
+Expected response:
+
+```json
+{"ok":true,"name":"media-stack-mcp","transport":"http"}
+```
+
 Check that `/mcp` rejects unauthenticated requests:
 
 ```bash
 curl -i -X POST http://<qnap-ip>:3000/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+Expected status:
+
+```text
+401 Unauthorized
+```
+
+Check that the public HTTPS `/mcp` endpoint also rejects unauthenticated requests:
+
+```bash
+curl -i -X POST https://mcp.yourdomain.com/mcp \
   -H 'Content-Type: application/json' \
   -d '{}'
 ```
@@ -301,7 +424,7 @@ Use this shape for clients that support remote Streamable HTTP MCP servers:
 {
   "mcpServers": {
     "media-stack": {
-      "url": "http://192.168.1.151:3000/mcp",
+      "url": "https://mcp.yourdomain.com/mcp",
       "headers": {
         "Authorization": "Bearer your_long_random_token"
       }
@@ -310,7 +433,7 @@ Use this shape for clients that support remote Streamable HTTP MCP servers:
 }
 ```
 
-Replace `192.168.1.151` with your QNAP IP and `your_long_random_token` with `MCP_HTTP_TOKEN` from `.env`.
+Replace `mcp.yourdomain.com` with your Cloudflare Tunnel hostname and `your_long_random_token` with `MCP_HTTP_TOKEN` from `.env`.
 
 HTTP MCP sessions are stored in memory. Restarting the container resets active MCP sessions, which is expected.
 
@@ -338,6 +461,12 @@ Follow logs:
 
 ```bash
 docker compose logs -f media-stack-mcp
+```
+
+Follow Cloudflare Tunnel logs:
+
+```bash
+docker compose logs -f cloudflared
 ```
 
 Pull the latest code and rebuild:
@@ -379,6 +508,81 @@ Then restart:
 
 ```bash
 docker compose up -d --build
+```
+
+### `CLOUDFLARED_TOKEN` Is Missing Or Invalid
+
+Create a Cloudflare Tunnel in the Cloudflare Zero Trust dashboard, copy the Docker tunnel token, and set:
+
+```env
+CLOUDFLARED_TOKEN=your_cloudflare_tunnel_token
+```
+
+Then restart and check logs:
+
+```bash
+docker compose up -d --build
+docker compose logs -f cloudflared
+```
+
+### Cloudflare Tunnel Shows `502` Or Cannot Reach The Service
+
+In the Cloudflare Tunnel public hostname settings, the service target should be:
+
+```text
+http://media-stack-mcp:3000
+```
+
+Confirm both containers are on the same Docker network:
+
+```bash
+docker compose ps
+docker inspect media-stack-mcp --format '{{json .NetworkSettings.Networks}}'
+docker inspect media-stack-mcp-cloudflared --format '{{json .NetworkSettings.Networks}}'
+```
+
+### Claude Cannot Connect To The MCP URL
+
+Use the public Cloudflare URL in Claude:
+
+```text
+https://mcp.yourdomain.com/mcp
+```
+
+Do not use these in Claude remote MCP/custom connector setup:
+
+```text
+http://<qnap-ip>:3000/mcp
+http://localhost:3000/mcp
+https://<qnap-ip>:3000/mcp
+```
+
+Then validate from outside your LAN if possible:
+
+```bash
+curl https://mcp.yourdomain.com/healthz
+```
+
+If health works but Claude still fails, check that Claude has the bearer token header exactly:
+
+```http
+Authorization: Bearer <MCP_HTTP_TOKEN>
+```
+
+Also confirm Cloudflare is not presenting an Access login page or other browser challenge in front of `/mcp`.
+
+### Public HTTPS URL Returns Host Header Errors
+
+Set `MCP_ALLOWED_HOSTS` to your Cloudflare Tunnel hostname:
+
+```env
+MCP_ALLOWED_HOSTS=mcp.yourdomain.com
+```
+
+Then restart:
+
+```bash
+docker compose restart media-stack-mcp
 ```
 
 ### `401 Unauthorized`
@@ -507,4 +711,4 @@ Example local stdio MCP config:
 
 Do not expose port `3000` directly to the public internet.
 
-Use LAN/VPN access only unless the service is behind HTTPS, a reverse proxy, and strong access control. Rotate `MCP_HTTP_TOKEN` if it is shared or exposed.
+Use Cloudflare Tunnel for Claude HTTPS connectivity instead of opening inbound ports on the QNAP. Keep bearer-token auth enabled, use a long random `MCP_HTTP_TOKEN`, set `MCP_ALLOWED_HOSTS` to your public tunnel hostname, and rotate both `MCP_HTTP_TOKEN` and `CLOUDFLARED_TOKEN` if either value is shared or exposed.

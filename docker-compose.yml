@@ -12,6 +12,16 @@ services:
     networks:
       - media-stack
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: media-stack-mcp-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    depends_on:
+      - media-stack-mcp
+    networks:
+      - media-stack
+
 networks:
   media-stack:
     external: true
