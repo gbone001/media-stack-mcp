@@ -150,7 +150,9 @@ docker compose logs -f media-stack-mcp
 
 ## Claude HTTPS Setup
 
-Claude remote MCP/custom connectors need a trusted HTTPS URL. This project uses a `cloudflared` sidecar in Docker Compose so the MCP app can stay plain HTTP inside Docker while Cloudflare publishes HTTPS externally.
+Claude remote MCP/custom connectors need a trusted HTTPS URL. This project ships an optional `cloudflared` sidecar in Docker Compose so the MCP app can stay plain HTTP inside Docker while Cloudflare publishes HTTPS externally.
+
+The sidecar is **off by default** and lives behind the `cloudflare` Compose profile. Enable it by adding `--profile cloudflare` to your compose commands (see below). If you reach the MCP another way (LAN only, your own reverse proxy, etc.), you can ignore this section entirely and leave `CLOUDFLARED_TOKEN` blank.
 
 The important lesson from Claude setup is that Claude does not connect to the QNAP LAN URL directly. Use the Cloudflare HTTPS hostname in Claude, not `http://<qnap-ip>:3000/mcp`, not `localhost`, and not a self-signed HTTPS URL.
 
@@ -185,10 +187,10 @@ MCP_PUBLIC_URL=https://mcp.yourdomain.com/mcp
 MCP_ALLOWED_HOSTS=mcp.yourdomain.com
 ```
 
-Start or update the stack:
+Start or update the stack with the tunnel enabled:
 
 ```bash
-docker compose up -d --build
+docker compose --profile cloudflare up -d --build
 ```
 
 Check the Cloudflare Tunnel logs:
@@ -518,10 +520,10 @@ Create a Cloudflare Tunnel in the Cloudflare Zero Trust dashboard, copy the Dock
 CLOUDFLARED_TOKEN=your_cloudflare_tunnel_token
 ```
 
-Then restart and check logs:
+Then restart with the `cloudflare` profile and check logs:
 
 ```bash
-docker compose up -d --build
+docker compose --profile cloudflare up -d --build
 docker compose logs -f cloudflared
 ```
 

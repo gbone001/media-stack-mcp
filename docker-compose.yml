@@ -12,11 +12,15 @@ services:
     networks:
       - media-stack
 
+  # Optional Cloudflare Tunnel sidecar. Off by default; only starts when the
+  # "cloudflare" profile is enabled, e.g. `docker compose --profile cloudflare up -d`.
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: media-stack-mcp-cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    profiles:
+      - cloudflare
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN:-}
     depends_on:
       - media-stack-mcp
     networks:
